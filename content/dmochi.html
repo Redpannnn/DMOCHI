@@ -425,7 +425,70 @@ function loadData(){
   DB.targets=DB.targets||{};
   save();
 }
-const save=()=>localStorage.setItem(KEY,JSON.stringify(DB));
+/* === SERVER SYNC (Turso via /api/state) === */
+let _saveT=null,_ready=false,_dirty=false;
+const APP_API='/api/state';
+const _getAppKey=()=>{
+  try{
+    if(window.parent&&window.parent.location&&window.parent.location.search){
+      const m=new URLSearchParams(window.parent.location.search).get('key');
+      if(m){
+        try{localStorage.setItem('dmochi.key',m)}catch(e){}
+        try{window.parent.history.replaceState({},'',window.parent.location.pathname)}catch(e){}
+        return m;
+      }
+    }
+  }catch(e){}
+  try{return localStorage.getItem('dmochi.key')||''}catch(e){return ''}
+};
+const _setAppKey=k=>{try{localStorage.setItem('dmochi.key',k)}catch(e){}};
+const _postState=()=>{
+  try{
+    const k=_getAppKey();
+    fetch(APP_API,{method:'POST',headers:{'Content-Type':'application/json','x-app-key':k},body:JSON.stringify({data:DB})}).catch(()=>{});
+  }catch(e){}
+};
+const save=()=>{
+  try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
+  if(!_ready){_dirty=true;return}
+  if(_saveT)clearTimeout(_saveT);
+  _saveT=setTimeout(_postState,400);
+};
+const syncFromServer=async()=>{
+  try{
+    let k=_getAppKey();
+    let r=await fetch(APP_API,{headers:{'x-app-key':k}});
+    if(r.status===401){
+      k=prompt('Masukkan kunci akses Dompet Mochi:')||'';
+      if(!k){_ready=true;return}
+      _setAppKey(k);
+      r=await fetch(APP_API,{headers:{'x-app-key':k}});
+    }
+    if(!r.ok){_ready=true;return}
+    const j=await r.json();
+    const srv=j&&j.data;
+    if(srv){
+      const s=JSON.stringify(srv);
+      if(s!==JSON.stringify(DB)){
+        localStorage.setItem(KEY,s);
+        Object.assign(DB,{tx:[],initBal:{},salary:{},bills:{},targets:{}},srv);
+        DB.tx=DB.tx||[];
+        DB.initBal=DB.initBal||{};
+        PLATFORMS.forEach(p=>{if(DB.initBal[p.id]==null)DB.initBal[p.id]=0});
+        DB.salary.tama=Object.assign({merah:0,weekend:0,comp:[]},DB.salary.tama||{});
+        DB.salary.septi=Object.assign({merah:0,weekend:0,comp:[]},DB.salary.septi||{});
+        DB.bills.tama=DB.bills.tama||[];
+        DB.bills.septi=DB.bills.septi||[];
+        DB.targets=DB.targets||{};
+        renderAll();
+      }
+      _ready=true;
+      if(_dirty){_dirty=false;if(_saveT)clearTimeout(_saveT);_saveT=setTimeout(_postState,400)}
+    }else{
+      _ready=true;_postState();
+    }
+  }catch(e){_ready=true}
+};
 
 /* ================= STATE UI ================= */
 const NOW=new Date();
@@ -1131,6 +1194,7 @@ loadData();
 document.title=CONFIG.NAMA_APP+' · Tracker Keuangan';
  $('#brand').textContent='🐱 '+CONFIG.NAMA_APP;
 renderAll();
+syncFromServer();
 </script>
 </body>
 </html>
