@@ -14,36 +14,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DMOCHI · Dompet Mochi — Tracker Keuangan",
-  description:
-    "DMOCHI (Dompet Mochi) — aplikasi tracker keuangan pribadi. Catat pemasukan, pengeluaran, transfer, gaji, tagihan, dan target tabungan.",
-  keywords: [
-    "DMOCHI",
-    "Dompet Mochi",
-    "tracker keuangan",
-    "keuangan",
-    "budget",
-    "finance",
-    "Dompet",
-  ],
-  authors: [{ name: "DMOCHI" }],
-  applicationName: "DMOCHI",
+  title: "Dompet Mochi · Tracker Keuangan",
+  description: "Dompet Mochi — tracker keuangan pribadi yang imut dan ramah pengguna.",
+  keywords: ["Dompet Mochi", "keuangan", "finance tracker", "budget", "Mochi"],
+  authors: [{ name: "Redpannnn" }],
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/logo.svg",
   },
   openGraph: {
-    title: "DMOCHI · Dompet Mochi",
-    description:
-      "Tracker keuangan pribadi — pemasukan, pengeluaran, gaji, tagihan, target.",
-    siteName: "DMOCHI",
+    title: "Dompet Mochi",
+    description: "Tracker keuangan pribadi yang imut dan ramah pengguna.",
+    siteName: "Dompet Mochi",
     type: "website",
   },
   twitter: {
-    card: "summary",
-    title: "DMOCHI · Dompet Mochi",
-    description:
-      "Tracker keuangan pribadi — pemasukan, pengeluaran, gaji, tagihan, target.",
+    card: "summary_large_image",
+    title: "Dompet Mochi",
+    description: "Tracker keuangan pribadi yang imut dan ramah pengguna.",
   },
 };
 

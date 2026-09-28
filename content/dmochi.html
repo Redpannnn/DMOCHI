@@ -445,8 +445,11 @@ const _setAppKey=k=>{try{localStorage.setItem('dmochi.key',k)}catch(e){}};
 const _postState=()=>{
   try{
     const k=_getAppKey();
-    fetch(APP_API,{method:'POST',headers:{'Content-Type':'application/json','x-app-key':k},body:JSON.stringify({data:DB})}).catch(()=>{});
-  }catch(e){}
+    setSyncStatus('syncing');
+    fetch(APP_API,{method:'POST',headers:{'Content-Type':'application/json','x-app-key':k},body:JSON.stringify({data:DB})})
+      .then(r=>{r.ok?setSyncStatus('ok'):setSyncStatus('err','POST '+r.status)})
+      .catch(e=>setSyncStatus('err',String(e&&e.message||e)));
+  }catch(e){setSyncStatus('err',String(e&&e.message||e))}
 };
 const save=()=>{
   try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
@@ -456,6 +459,7 @@ const save=()=>{
 };
 const syncFromServer=async()=>{
   try{
+    setSyncStatus('syncing');
     let k=_getAppKey();
     let r=await fetch(APP_API,{headers:{'x-app-key':k}});
     if(r.status===401){
@@ -464,7 +468,7 @@ const syncFromServer=async()=>{
       _setAppKey(k);
       r=await fetch(APP_API,{headers:{'x-app-key':k}});
     }
-    if(!r.ok){_ready=true;return}
+    if(!r.ok){_ready=true;setSyncStatus('err','GET '+r.status+' (cek env Turso)');return}
     const j=await r.json();
     const srv=j&&j.data;
     if(srv){
@@ -482,13 +486,32 @@ const syncFromServer=async()=>{
         DB.targets=DB.targets||{};
         renderAll();
       }
+      setSyncStatus('ok');
       _ready=true;
       if(_dirty){_dirty=false;if(_saveT)clearTimeout(_saveT);_saveT=setTimeout(_postState,400)}
     }else{
       _ready=true;_postState();
     }
-  }catch(e){_ready=true}
+  }catch(e){_ready=true;setSyncStatus('err',String(e&&e.message||e))}
 };
+/* === SYNC STATUS BADGE (biar gagal sync gak senyap lagi) === */
+let SYNC_BADGE=null;
+function setSyncStatus(state,msg){
+  try{
+    if(!SYNC_BADGE){
+      SYNC_BADGE=document.createElement('div');
+      SYNC_BADGE.id='dmochiSyncBadge';
+      SYNC_BADGE.style.cssText='position:fixed;top:6px;right:6px;z-index:99999;font:600 10px/1.4 Nunito,sans-serif;color:#fff;background:#94a3b8;padding:3px 7px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:none;opacity:.95;letter-spacing:.2px;transition:background .25s';
+      (document.body||document.documentElement).appendChild(SYNC_BADGE);
+    }
+    const map={syncing:['#f59e0b','⏳ Sync…'],ok:['#22c55e','☁️ Tersinkron'],err:['#ef4444','☁️ Offline']};
+    const m=map[state]||['#94a3b8','☁️ …'];
+    SYNC_BADGE.style.background=m[0];
+    SYNC_BADGE.textContent=m[1];
+    SYNC_BADGE.title=msg?((state==='err'?'Sinkronisasi gagal: ':'')+msg):'';
+  }catch(e){}
+}
+setSyncStatus('syncing');
 
 /* ================= STATE UI ================= */
 const NOW=new Date();

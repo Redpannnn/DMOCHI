@@ -30,3 +30,10 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+/// Single-row store for the Dompet Mochi app state (JSON blob).
+model AppState {
+  id        Int      @id @default(1)
+  data      String
+  updatedAt DateTime @updatedAt
+}
