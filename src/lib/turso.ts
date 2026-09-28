@@ -1,14 +1,5 @@
 import { createClient, type Client } from '@libsql/client'
 
-/**
- * libSQL / Turso client.
- *
- * Works locally with a file: URL (DATABASE_URL=file:.../custom.db) and on
- * Vercel with a Turso libsql:// URL + TURSO_AUTH_TOKEN. No migration CLI is
- * needed: the single-row state table is created on first use via CREATE TABLE
- * IF NOT EXISTS, so you never have to run `prisma db push` by hand.
- */
-
 let _client: Client | null = null
 
 export function getTurso(): Client {
@@ -38,7 +29,6 @@ export async function ensureSchema(): Promise<void> {
   _ensured = true
 }
 
-/** Returns the raw JSON string of the saved app state, or null if empty. */
 export async function getState(): Promise<string | null> {
   await ensureSchema()
   const r = await getTurso().execute({
@@ -49,7 +39,6 @@ export async function getState(): Promise<string | null> {
   return String(r.rows[0].data)
 }
 
-/** Saves (insert or update) the raw JSON string of the app state. */
 export async function setState(data: string): Promise<void> {
   await ensureSchema()
   const now = Date.now()
