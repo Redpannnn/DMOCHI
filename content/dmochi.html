@@ -124,6 +124,22 @@ body{font-family:'Nunito',sans-serif;color:#4A3728;background:#FFF3E2;
 .empt b{display:block;font-family:'Fredoka';color:#4A3728;font-size:16px;margin-top:4px}
 .empt span{display:block;margin-top:3px}
 .emptyline{padding:10px 4px;color:#8A7364;font-weight:800;font-size:13px;text-align:center}
+.searchbox{position:relative;margin:0 0 10px}
+.searchbox .inl{padding:10px 12px 10px 34px;font-size:14px;font-weight:700;border-radius:14px}
+.searchbox .sico{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;opacity:.6}
+.searchclear{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;border:2px solid #C9AE8E;background:#fff;color:#8A7364;font-size:11px;font-weight:900;display:none;place-items:center;cursor:pointer}
+.searchbox.has-val .searchclear{display:grid}
+.tgt-toggle{cursor:pointer}
+.tgt-toggle:active{transform:scale(.92)}
+.tgt-chev{font-size:11px;color:#A08D7F;font-weight:900;margin-left:3px;display:inline-block;transition:transform .15s}
+.trow.open{background:#FFF9EF;border-radius:14px}
+.tgtlist{margin-top:10px;padding-top:8px;border-top:2px dashed #EAD9BE}
+.tgtlist-h{font-family:'Fredoka';font-weight:600;font-size:12.5px;color:#8A7364;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.tgtlist-h .th-sp{flex:1}
+.tgt-hide{font-size:11px;font-weight:900;color:#8A7364;background:#FFFDF8;border:2px solid #C9AE8E;border-radius:999px;padding:3px 9px;cursor:pointer;flex:none}
+.tgt-hide:active{transform:scale(.95)}
+.tgtlist .txrow{padding:8px 10px;box-shadow:0 2px 0 rgba(74,55,40,.12)}
+.tgtlist .dayhead{margin:8px 2px 4px}
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:70;background:#FFFDF8;border-top:2.5px solid #4A3728;display:flex;padding:7px 6px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(74,55,40,.08)}
 .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:800;font-size:10.5px;color:#A08D7F;padding:2px 0}
 .bnav button i{font-style:normal;font-size:20px;padding:5px 15px;border-radius:999px;transition:.15s}
@@ -387,7 +403,7 @@ const PALETTE=[
   {c:'#F0813C',s:'#FCE8DA'},{c:'#E06FB4',s:'#FAE3F1'},{c:'#B08340',s:'#F2E8D6'},
   {c:'#C08552',s:'#F3E7DB'},{c:'#4E9BB0',s:'#E0EFF3'},{c:'#9B8A7B',s:'#EEE9E4'},
 ];
-const PLATCOLOR={CASH:PALETTE[0],TITO:PALETTE[1],SEPTI:PALETTE[2],ISAKU:PALETTE[3]};
+const PLATCOLOR={CASH:PALETTE[0],TITO:PALETTE[1],SEPTI:PALETTE[2],ISAKU:PALETTE[3],DANALAIN:{c:'#8E44AD',s:'#EFE3F5'}};
 const CATCOLOR={
   'Tagihan':{c:'#E96A8D',s:'#FBE1E9'},'Jajan':{c:'#F2A93B',s:'#FCEED3'},
   'Transportasi':{c:'#5D9DE0',s:'#E1EDFA'},'Hiburan':{c:'#F26D6D',s:'#FBE1E1'},
@@ -516,7 +532,7 @@ setSyncStatus('syncing');
 
 /* ================= STATE UI ================= */
 const NOW=new Date();
-const st={tab:'home',y:NOW.getFullYear(),m:NOW.getMonth(),salTab:'tama',billTab:'tama',platId:null,editComp:null,editBill:null,editTgt:null};
+const st={tab:'home',y:NOW.getFullYear(),m:NOW.getMonth(),salTab:'tama',billTab:'tama',platId:null,editComp:null,editBill:null,editTgt:null,tgtOpen:null,search:''};
 const monthKey=()=>st.y+'-'+pad(st.m+1);
 const monthLabel=()=>MONTHS[st.m]+' '+st.y;
 const mTx=()=>DB.tx.filter(t=>t.date.slice(0,7)===monthKey()).sort((a,b)=>b.date.localeCompare(a.date));
@@ -664,6 +680,47 @@ function groupedList(list){
   });
   return '<div class="txlist">'+html+'</div>';
 }
+/* ---- pencarian transaksi (Beranda) ---- */
+function filterTx(list,q){
+  q=String(q||'').toLowerCase().trim();
+  if(!q)return list;
+  return list.filter(t=>{
+    const platName=t.type==='trf'?'':((PMAP[t.platform]||{}).name||'');
+    const hay=[
+      t.title||'',
+      t.cat||'',
+      t.note||'',
+      platName,
+      (PMAP[t.from]||{}).name||'',
+      (PMAP[t.to]||{}).name||'',
+      t.type==='trf'?'transfer':''
+    ].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
+function renderFilteredTx(list){
+  const f=filterTx(list,st.search);
+  if(!f.length){
+    return '<div class="empt" style="padding:18px 14px"><b>Tidak ditemukan</b><span>Coba kata kunci lain ya~</span></div>';
+  }
+  return groupedList(f);
+}
+A.searchTx=function(v){
+  st.search=v;
+  const sb=document.getElementById('txSearch');
+  if(sb){const box=sb.closest('.searchbox');if(box)box.classList.toggle('has-val',!!v);}
+  const list=mTx();
+  const f=filterTx(list,v);
+  const cnt=document.getElementById('txCnt');
+  if(cnt)cnt.textContent=f.length+(f.length!==list.length?' / '+list.length:'')+' transaksi';
+  const w=document.getElementById('txListWrap');
+  if(w)w.innerHTML=renderFilteredTx(list);
+};
+A.clearSearch=function(){
+  const sb=document.getElementById('txSearch');
+  if(sb)sb.value='';
+  A.searchTx('');
+};
 function barHTML(o,tot){
   const c=CMAP[o.n]||{e:'📎',c:'#9B8A7B',s:'#EEE9E4'};
   const p=tot?Math.round(o.a/tot*100):0;
@@ -681,6 +738,7 @@ const stat3=(i,o,net)=>'<div class="stat3">'
 function vHome(){
   const el=$('#v-home');
   const list=mTx(),s=mStats(list),bal=balances();
+  const fList=filterTx(list,st.search);
   const total=PLATFORMS.reduce((a,p)=>a+bal[p.id],0);
   const mood=!list.length?'plain':(s.net<0?'worried':'happy');
   el.innerHTML=
@@ -701,8 +759,12 @@ function vHome(){
     +'<div class="arow">'
     +'<button class="abtn mint" onclick="A.form(\'in\')">💰 Pemasukan</button>'
     +'<button class="abtn butter" onclick="A.form(\'trf\')">🔁 Transfer</button></div></div>'
-    +'<div class="sechead"><span class="sdot"></span><h2>Transaksi '+monthLabel()+'</h2><span class="cnt">'+list.length+' transaksi</span></div>'
-    +(list.length?groupedList(list)
+        +'<div class="sechead"><span class="sdot"></span><h2>Transaksi '+monthLabel()+'</h2><span class="cnt" id="txCnt">'+fList.length+(st.search&&fList.length!==list.length?' / '+list.length:'')+' transaksi</span></div>'
+    +(list.length
+      ?'<div class="searchbox'+(st.search?' has-val':'')+'"><span class="sico">🔍</span>'
+        +'<input class="inl" id="txSearch" placeholder="Cari transaksi — judul, kategori, platform, catatan…" value="'+esc(st.search||'')+'" oninput="A.searchTx(this.value)" autocomplete="off">'
+        +'<button class="searchclear" onclick="A.clearSearch()" aria-label="Hapus pencarian">✕</button></div>'
+        +'<div id="txListWrap">'+renderFilteredTx(list)+'</div>'
       :'<div class="empt">'+catSVG('plain',60)+'<b>Belum ada transaksi</b><span>Yuk catat yang pertama, Mochi tungguin~</span></div>');
 }
 A.poke=()=>{
@@ -1127,9 +1189,20 @@ function vTarget(){
     const pill=st.editTgt===c.n
       ?'<input class="inl tged" id="tged" inputmode="numeric" value="'+(tg?fmtP(tg):'')+'" placeholder="0" oninput="A.fmtAmt(this)" onblur="A.tgtSave()" onkeydown="if(event.key===\'Enter\'){this.blur()}">'
       :'<button class="tgpill" data-n="'+esc(c.n)+'" onclick="A.tgtStart(this.dataset.n)">'+(tg?fmt(tg):'＋ Target')+'</button>';
-    return '<div class="trow"><span class="tico" style="background:'+c.s+';border-color:'+c.c+'">'+c.e+'</span>'
-      +'<div class="tmid"><div class="trowtop"><b>'+esc(c.n)+'</b>'+chip+'</div><small>'+sub+'</small>'
-      +'<div class="hbar"><i style="width:'+pct+'%;background:'+barCol+'"></i></div></div>'+pill+'</div>';
+        const isOpen=st.tgtOpen===c.n;
+    const catList=list.filter(t=>t.cat===c.n);
+    const txBlock=isOpen
+      ?'<div class="tgtlist"><div class="tgtlist-h"><span>📋 Transaksi '+esc(c.n)+'</span><span class="th-sp"></span><span class="num sm">'+catList.length+' tx</span>'
+        +'<button class="tgt-hide" data-tgtcat="'+esc(c.n)+'" title="Sembunyikan transaksi">Sembunyikan ▴</button></div>'
+        +(catList.length?'<div class="txlist">'+catList.map(txRowHTML).join('')+'</div>'
+          :'<p class="emptyline">Belum ada pengeluaran '+esc(c.n)+' bulan ini.</p>')
+        +'</div>'
+      :'';
+    return '<div class="trow'+(isOpen?' open':'')+'"><span class="tico tgt-toggle" data-tgtcat="'+esc(c.n)+'" title="Lihat / sembunyikan transaksi" style="background:'+c.s+';border-color:'+c.c+'">'+c.e+'</span>'
+      +'<div class="tmid"><div class="trowtop"><b class="tgt-toggle" data-tgtcat="'+esc(c.n)+'">'+esc(c.n)+' <span class="tgt-chev">'+(isOpen?'▾':'▸')+'</span></b>'+chip+'</div><small>'+sub+'</small>'
+      +'<div class="hbar"><i style="width:'+pct+'%;background:'+barCol+'"></i></div>'
+      +txBlock
+      +'</div>'+pill+'</div>';
   }).join('');
   el.innerHTML=
     '<div class="card hero thero"><span class="tape t2"></span><div>'
@@ -1140,10 +1213,12 @@ function vTarget(){
     +'<span class="hchip">'+un+' belum diset</span></div></div>'
     +'<div class="herocat" onclick="A.poke()">'+catSVG(mood,84)+'</div></div>'
     +'<div class="sechead"><span class="sdot"></span><h2>Target per kategori</h2><span class="cnt">pengeluaran bulan ini</span></div>'
-    +'<div class="card" style="padding:6px 14px">'+rows+'</div>';
+        +'<div class="card" style="padding:6px 14px">'+rows+'</div>'
+    +'<p class="eqnote" style="text-align:center;margin-top:12px">Klik judul atau ikon kategori buat lihat & sembunyikan transaksinya 🐾</p>';
   if(st.editTgt)setTimeout(()=>{const i=$('#tged');i&&i.focus();},60);
 }
 A.tgtStart=n=>{st.editTgt=n;renderAll();};
+A.tgtToggle=function(n){st.tgtOpen=(st.tgtOpen===n)?null:n;renderAll();};
 A.tgtSave=()=>{
   const n=st.editTgt;if(!n)return;
   const inp=$('#tged'),v=inp?parseNum(inp.value):0;
@@ -1183,8 +1258,10 @@ document.addEventListener('click',e=>{
   }
   const cell=e.target.closest('.calcell[data-day]');
   if(cell){A.day(cell.dataset.day);return;}
-  const pc=e.target.closest('[data-plat]');
+    const pc=e.target.closest('[data-plat]');
   if(pc){A.plat(pc.dataset.plat);return;}
+  const tgtTg=e.target.closest('[data-tgtcat]');
+  if(tgtTg){A.tgtToggle(tgtTg.dataset.tgtcat);return;}
   const row=e.target.closest('.txrow[data-id]');
   if(row){A.txMenu(row.dataset.id);return;}
 });
